@@ -4,7 +4,6 @@ app/config/firebase-config.json
 app/config/gemini-key.json
 app/config/serviceAccountKey.json
 app/config/google_service_account.json
-app/
 
 # Environment variables
 .env
