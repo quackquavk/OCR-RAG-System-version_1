@@ -15,7 +15,7 @@ python-multipart
 langchain-google-genai
 langchain-groq
 langchain-core
-langchain-huggingface
+
 langchain-community
 
 pandas
@@ -26,7 +26,7 @@ apscheduler
 # Note: torch and torchvision are installed separately in Dockerfile
 # to avoid pip hash mismatch errors with --index-url
 easyocr
-sentence-transformers
+
 # faiss-cpu
 tiktoken
 
