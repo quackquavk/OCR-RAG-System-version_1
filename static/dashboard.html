@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RAG Chat - Testing Mode</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="sidebar-layout.css">
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script src="groq-gate.js"></script>
+</head>
+
+<body>
+  <div class="sidebar">
+    <h1>🧪 Test Dashboard</h1>
+    <p style="color: #666; font-size: 12px; padding: 0 20px;">Testing Mode - No Auth Required</p>
+    <a href="dashboard.html" class="active">Dashboard</a>
+    <a href="upload_docs.html">Upload</a>
+    <a href="sheets.html">Sheet</a>
+  </div>
+  <div class="content">
+    <div class="title">RAG Chat - Ask about your documents</div>
+    <div id="chatWindow" class="chat-window"></div>
+    <div class="chat-input-container">
+      <input type="text" id="chatInput" class="chat-input" placeholder="Ask me anything about your receipts...">
+      <button id="sendBtn" class="send-btn">Send</button>
+    </div>
+  </div>
+
+  <script>
+    // Function to add a message to the chat window
+    function addMessage(text, type) {
+      const chatWindow = document.getElementById("chatWindow");
+      const msg = document.createElement("div");
+      msg.className = `message ${type}`;
+
+      const bubble = document.createElement("div");
+      bubble.className = "bubble";
+
+      // Use marked to parse markdown if it's a bot message, otherwise just text
+      if (type === 'bot') {
+        bubble.innerHTML = text ? marked.parse(text) : "<em>No response received.</em>";
+      } else {
+        bubble.textContent = text || "";
+      }
+
+      msg.appendChild(bubble);
+      chatWindow.appendChild(msg);
+      chatWindow.scrollTop = chatWindow.scrollHeight;
+      return msg;
+    }
+
+    // Send message function
+    async function sendMessage() {
+      const input = document.getElementById("chatInput");
+      const text = input.value.trim();
+
+      if (!text) return;
+
+      // Show user's message
+      addMessage(text, "user");
+      input.value = "";
+
+      // Show loading message
+      const loadingMsg = addMessage("Thinking...", "bot");
+      const bubble = loadingMsg.querySelector(".bubble");
+
+      // Call RAG API (no authentication needed in testing mode)
+      const apiUrl = "http://127.0.0.1:8000/api/v1/chat/stream";
+      console.log("🔍 Calling Streaming API:", apiUrl);
+
+      try {
+        const response = await fetch(apiUrl, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": "Bearer test_token"  // Dummy token for testing
+          },
+          body: JSON.stringify({ query: text })
+        });
+
+        if (!response.ok) {
+          const data = await response.json();
+          loadingMsg.remove();
+          if (response.status === 429) {
+            addMessage(` ${data.detail}`, "bot rate-limit");
+          } else {
+            addMessage(`Error: ${data.detail || 'Unknown error'}`, "bot");
+          }
+          return;
+        }
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let fullText = "";
+        let isFirstChunk = true;
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          const chunk = decoder.decode(value, { stream: true });
+          const lines = chunk.split("\n");
+
+          for (const line of lines) {
+            if (!line.trim()) continue;
+
+            if (line.startsWith("metadata:")) {
+              try {
+                const metadata = JSON.parse(line.substring(9));
+                console.log("Metadata received:", metadata);
+                // Future: display sources or query type
+              } catch (e) {
+                console.warn("Failed to parse metadata:", e);
+              }
+            } else if (line.startsWith("data:")) {
+              if (isFirstChunk) {
+                bubble.innerHTML = ""; // Clear "Thinking..."
+                isFirstChunk = false;
+              }
+              const textChunk = line.substring(5);
+              fullText += textChunk;
+              // Use marked to parse accumulated markdown
+              bubble.innerHTML = marked.parse(fullText);
+
+              // Scroll to bottom
+              const chatWindow = document.getElementById("chatWindow");
+              chatWindow.scrollTop = chatWindow.scrollHeight;
+            } else if (line.startsWith("error:")) {
+              const errorText = line.substring(6);
+              bubble.innerHTML += `<br><span style="color:red">Error: ${errorText}</span>`;
+            }
+          }
+        }
+
+      } catch (error) {
+        console.error("Chat error:", error);
+        loadingMsg.remove();
+        addMessage(`Error: ${error.message}. Check console for details.`, "bot");
+      }
+    }
+
+    // Enter key support
+    document.getElementById("chatInput").addEventListener("keypress", (e) => {
+      if (e.key === "Enter") sendMessage();
+    });
+
+    // Send button click support
+    document.getElementById("sendBtn").addEventListener("click", sendMessage);
+
+    // Welcome message
+    addMessage("Hello! I'm your RAG assistant. Ask me anything about your uploaded documents!", "bot");
+
+  </script>
+</body>
+
+</html>

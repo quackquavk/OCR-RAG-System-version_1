@@ -1,0 +1,58 @@
+# ==================== CREDENTIALS & SECRETS ====================
+# Firebase & Google Cloud credentials
+app/config/firebase-config.json
+app/config/gemini-key.json
+app/config/serviceAccountKey.json
+app/config/google_service_account.json
+app/
+
+# Environment variables
+.env
+.env.*
+!.env.example
+
+# Counter files (may contain sensitive data)
+counters.json
+
+# ==================== PYTHON ====================
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyc
+
+# Virtual environments
+myenv/
+venv/
+env/
+ENV/
+
+# ==================== DATA & UPLOADS ====================
+# User uploads and processed data
+user_input_image/
+media/uploads/
+
+data/raw/
+data/vector_db/
+
+# ==================== LOGS ====================
+*.log
+
+# ==================== TESTING ====================
+test.py
+test1.py
+
+# ==================== DOCUMENTATION ====================
+README.md
+
+# ==================== IDE & TOOLS ====================
+.agent/
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# ==================== OS ====================
+.DS_Store
+Thumbs.db

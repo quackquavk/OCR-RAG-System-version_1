@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Upload Document - Testing Mode</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <link rel="stylesheet" href="/static/sidebar-layout.css">
+    <script src="/static/groq-gate.js"></script>
+</head>
+
+<body>
+    <script>
+        // Check if this is an OAuth callback redirect
+        const urlParams = new URLSearchParams(window.location.search);
+        const sheetsConnected = urlParams.get('sheets_connected');
+        const sheetName = urlParams.get('sheet_name');
+
+        // If coming from OAuth callback, show success message
+        if (sheetsConnected === 'true') {
+            console.log('✅ Returned from Google Sheets OAuth successfully');
+            if (sheetName) {
+                setTimeout(() => {
+                    alert(`✅ Successfully connected to Google Sheets: ${decodeURIComponent(sheetName)}`);
+                    // Reload to update connection status
+                    window.location.href = '/static/upload_docs.html';
+                }, 500);
+            }
+        }
+    </script>
+    <div class="sidebar">
+        <h1>🧪 Test Dashboard</h1>
+        <p style="color: #666; font-size: 12px; padding: 0 20px;">Testing Mode - No Auth Required</p>
+        <a href="dashboard.html">Dashboard</a>
+        <a href="upload_docs.html" class="active">Upload</a>
+        <a href="sheets.html">Sheet</a>
+    </div>
+    <div class="content">
+        <div class="title-header">
+            <div class="title">Upload Document</div>
+            <button id="viewSheetsBtn" class="view-sheets-btn-header" onclick="openUserGoogleSheet()">📊
+                View Google Sheets</button>
+        </div>
+        <!-- Google Sheets Connection Status -->
+        <div id="sheetsStatus" class="sheets-status" style="display: none;">
+            <p>Checking Google Sheets connection...</p>
+        </div>
+        <div class="main-layout">
+            <!-- Left Column: Upload Controls -->
+            <div class="upload-column">
+                <div class="upload-container">
+                    <div id="dropZone" class="drop-zone">
+                        <svg class="upload-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                            stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                        </svg>
+                        <h2>Drop your file here</h2>
+                        <p>or click to browse</p>
+                        <p class="file-types-hint">Supports: Images (JPG, PNG, etc.) and PDF files</p>
+                        <input id="fileInput" type="file" accept="image/*,.pdf" multiple style="display: none;" />
+                        <button id="browseBtn" class="browse-btn">Browse Files</button>
+                    </div>
+                </div>
+            </div>
+            <!-- Right Column: Processing Queue -->
+            <div class="queue-column">
+                <div class="processing-section" id="processingSection" style="display: none;">
+                    <div class="processing-header">
+                        <div class="processing-title">
+                            <svg class="processing-title-icon" xmlns="http://www.w3.org/2000/svg" fill="none"
+                                viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                            </svg>
+                            <h3>Processing Queue</h3>
+                        </div>
+                        <span id="queueCount" class="queue-count">0</span>
+                    </div>
+                    <div id="processingQueue" class="processing-queue-grid">
+                        <!-- Queue items will be added here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script>
+
+        const FASTAPI_PROCESS_URL = "http://127.0.0.1:8000/api/v1/process-image";
+        const dropZone = document.getElementById("dropZone");
+        const fileInput = document.getElementById("fileInput");
+        const browseBtn = document.getElementById("browseBtn");
+        const processingSection = document.getElementById("processingSection");
+
+        // Processing queue management
+        let processingQueue = [];
+        let queueIdCounter = 0;
+
+        // Check Google Sheets connection status on page load
+        async function checkSheetsConnection() {
+            const statusDiv = document.getElementById('sheetsStatus');
+
+            try {
+                // Add timeout to prevent hanging
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
+
+                const response = await fetch('/api/sheets/status', {
+                    headers: {
+                        'Authorization': 'Bearer test_token'
+                    },
+                    signal: controller.signal
+                });
+
+                clearTimeout(timeoutId);
+                const data = await response.json();
+
+                // Show the status div
+                statusDiv.style.display = 'block';
+
+                if (data.connected) {
+                    // Build History Options
+                    let historyOptions = '';
+                    if (data.history && data.history.length > 0) {
+                        historyOptions = data.history.map(sheet =>
+                            `<option value="${sheet.spreadsheet_id}" ${sheet.spreadsheet_id === data.spreadsheet_id ? 'selected' : ''}>${sheet.spreadsheet_name}</option>`
+                        ).join('');
+                    }
+
+                    statusDiv.innerHTML = `
+                        <div style="background: #d1fae5; border: 1px solid #10b981; padding: 15px; border-radius: 8px; display: flex; flex-direction: column; gap: 10px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <p style="color: #065f46; margin: 0;">
+                                    ✅ <strong>Connected:</strong> ${data.spreadsheet_name}
+                                    <a href="${data.spreadsheet_url}" target="_blank" style="color: #059669; text-decoration: underline; margin-left: 10px;">Open Sheet</a>
+                                </p>
+                                <button onclick="disconnectGoogleSheets()" style="padding: 6px 12px; background: #ef4444; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 13px;">
+                                    Disconnect
+                                </button>
+                            </div>
+                            
+                            <div style="display: flex; align-items: center; gap: 10px; margin-top: 5px; border-top: 1px solid #a7f3d0; padding-top: 10px;">
+                                <label style="font-size: 13px; color: #065f46;">Switch Sheet:</label>
+                                <select onchange="switchSheet(this.value)" style="padding: 5px; border-radius: 4px; border: 1px solid #10b981; font-size: 13px; max-width: 200px;">
+                                    ${historyOptions}
+                                </select>
+                                <button onclick="createNewSheet()" style="padding: 5px 10px; background: #10b981; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 13px;">
+                                    + New Sheet
+                                </button>
+                            </div>
+                        </div>
+                    `;
+
+                    // Enable upload
+                    enableUpload(true);
+
+                } else {
+                    statusDiv.innerHTML = `
+                        <div style="background: #fef3c7; border: 1px solid #f59e0b; padding: 15px; border-radius: 8px;">
+                            <p style="color: #92400e; margin: 0;">
+                                ⚠️ <strong>Google Sheets Not Connected</strong>
+                                <button onclick="connectGoogleSheets()" style="margin-left: 10px; padding: 8px 16px; background: #3b82f6; color: white; border: none; border-radius: 6px; cursor: pointer;">
+                                    Connect Now
+                                </button>
+                            </p>
+                            <p style="color: #92400e; font-size: 12px; margin-top: 5px;">
+                                You must connect Google Sheets to upload documents.
+                            </p>
+                        </div>
+                    `;
+
+                    // Disable upload
+                    enableUpload(false);
+                }
+
+            } catch (error) {
+                console.error('Error checking sheets connection:', error);
+
+                // On error, assume disconnected/blocked for safety, or show error
+                statusDiv.style.display = 'block';
+                statusDiv.innerHTML = `
+                    <div style="background: #fee2e2; border: 1px solid #ef4444; padding: 15px; border-radius: 8px;">
+                        <p style="color: #b91c1c; margin: 0;">
+                            ❌ <strong>Connection Error</strong>
+                            <button onclick="checkSheetsConnection()" style="margin-left: 10px; padding: 5px 10px; background: #ef4444; color: white; border: none; border-radius: 6px; cursor: pointer;">Retry</button>
+                        </p>
+                    </div>
+                `;
+                enableUpload(false);
+            }
+        }
+
+        function enableUpload(enabled) {
+            if (enabled) {
+                dropZone.classList.remove('disabled');
+                dropZone.style.pointerEvents = 'auto';
+                dropZone.style.opacity = '1';
+                fileInput.disabled = false;
+                browseBtn.disabled = false;
+                dropZone.querySelector('h2').innerText = "Drop your file here";
+            } else {
+                dropZone.classList.add('disabled');
+                dropZone.style.pointerEvents = 'none';
+                dropZone.style.opacity = '0.5';
+                fileInput.disabled = true;
+                browseBtn.disabled = true;
+                dropZone.querySelector('h2').innerText = "Connect Sheets to Upload";
+            }
+        }
+
+        // Connect to Google Sheets
+        async function connectGoogleSheets() {
+            try {
+                const response = await fetch('/api/sheets/connect', {
+                    headers: { 'Authorization': 'Bearer test_token' }
+                });
+                const data = await response.json();
+
+                if (data.auth_url) {
+                    window.location.href = data.auth_url;
+                } else {
+                    alert('Failed to initiate Google OAuth.');
+                }
+            } catch (error) {
+                console.error('Error connecting Google Sheets:', error);
+                alert('Failed to connect Google Sheets.');
+            }
+        }
+
+        async function disconnectGoogleSheets() {
+            if (!confirm("Are you sure you want to disconnect? Uploads will be disabled.")) return;
+
+            try {
+                const response = await fetch('/api/sheets/disconnect', {
+                    method: 'POST',
+                    headers: { 'Authorization': 'Bearer test_token' }
+                });
+                if (response.ok) {
+                    window.location.reload();
+                } else {
+                    alert('Failed to disconnect.');
+                }
+            } catch (error) {
+                console.error('Error disconnecting:', error);
+            }
+        }
+
+        async function createNewSheet() {
+            if (!confirm("Create a new Google Sheet? Future uploads will go there.")) return;
+
+            try {
+                const response = await fetch('/api/sheets/create_new_sheet', {
+                    method: 'POST',
+                    headers: { 'Authorization': 'Bearer test_token' }
+                });
+                if (response.ok) {
+                    const data = await response.json();
+                    alert(`Created new sheet: ${data.sheet_name}`);
+                    window.location.reload();
+                } else {
+                    alert('Failed to create new sheet.');
+                }
+            } catch (error) {
+                console.error('Error creating sheet:', error);
+            }
+        }
+
+        async function switchSheet(sheetId) {
+            try {
+                const response = await fetch('/api/sheets/switch_sheet', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': 'Bearer test_token',
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ spreadsheet_id: sheetId })
+                });
+
+                if (response.ok) {
+                    window.location.reload();
+                } else {
+                    alert('Failed to switch sheet.');
+                }
+            } catch (error) {
+                console.error('Error switching sheet:', error);
+            }
+        }
+
+        // Function to open user's Google Sheet
+        async function openUserGoogleSheet() {
+            try {
+                const response = await fetch('/api/sheets/status', {
+                    headers: { 'Authorization': 'Bearer test_token' }
+                });
+                const data = await response.json();
+                if (data.connected && data.spreadsheet_url) {
+                    window.open(data.spreadsheet_url, '_blank');
+                } else {
+                    alert('Please connect your Google Sheets first.');
+                }
+            } catch (error) {
+                console.error('Error fetching Google Sheets URL:', error);
+                alert('Failed to open Google Sheets.');
+            }
+        }
+
+        // Check connection on page load
+        window.addEventListener('DOMContentLoaded', () => {
+            // Default to disabled until checked
+            enableUpload(false);
+
+            // Check sheets connection
+            setTimeout(() => {
+                checkSheetsConnection().catch(err => {
+                    console.error('Failed to check sheets connection:', err);
+                });
+            }, 100);
+        });
+
+        function updateQueueCount() {
+            const count = processingQueue.length;
+            document.getElementById('queueCount').textContent = count;
+            if (count === 0) {
+                processingSection.style.display = 'none';
+            } else {
+                processingSection.style.display = 'block';
+            }
+        }
+        function addToQueue(file) {
+            const queueId = ++queueIdCounter;
+            const queueItem = {
+                id: queueId,
+                fileName: file.name,
+                status: 'processing',
+                timestamp: new Date().toLocaleTimeString()
+            };
+            processingQueue.push(queueItem);
+            renderQueueItem(queueItem);
+            updateQueueCount();
+            return queueId;
+        }
+        function updateQueueItem(queueId, status, data = {}) {
+            const item = processingQueue.find(q => q.id === queueId);
+            if (item) {
+                item.status = status;
+                item.data = data;
+                const element = document.getElementById(`queue-item-${queueId}`);
+                if (element) {
+                    updateQueueItemElement(element, item);
+                }
+            }
+        }
+        function removeFromQueue(queueId) {
+            setTimeout(() => {
+                processingQueue = processingQueue.filter(q => q.id !== queueId);
+                const element = document.getElementById(`queue-item-${queueId}`);
+                if (element) {
+                    element.style.animation = 'fadeOut 0.3s ease-out';
+                    setTimeout(() => {
+                        element.remove();
+                        updateQueueCount();
+                    }, 300);
+                }
+            }, 10000); // Remove after 10 seconds
+        }
+        function renderQueueItem(item) {
+            const queueContainer = document.getElementById('processingQueue');
+            const itemElement = document.createElement('div');
+            itemElement.id = `queue-item-${item.id}`;
+            itemElement.className = 'queue-item-card';
+            updateQueueItemElement(itemElement, item);
+            queueContainer.appendChild(itemElement);
+        }
+        function updateQueueItemElement(element, item) {
+            let statusIcon = '';
+            let statusClass = '';
+            let statusText = '';
+            if (item.status === 'processing') {
+                statusIcon = '<div class="queue-spinner-small"></div>';
+                statusClass = 'status-processing';
+                statusText = 'Processing...';
+            } else if (item.status === 'success') {
+                statusIcon = `<svg class="status-icon-small success" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7" />
+                </svg>`;
+                statusClass = 'status-success';
+                statusText = 'Completed';
+            } else if (item.status === 'error') {
+                statusIcon = `<svg class="status-icon-small error" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12" />
+                </svg>`;
+                statusClass = 'status-error';
+                statusText = 'Failed';
+            }
+            let documentIdSection = '';
+            if (item.status === 'success' && item.data && item.data.document_key) {
+                documentIdSection = `
+                    <div class="document-id-section">
+                        <span class="doc-id-label">Document ID:</span>
+                        <span class="doc-id-value">${item.data.document_key}</span>
+                    </div>
+                `;
+            }
+            element.className = `queue-item-card ${statusClass}`;
+            element.innerHTML = `
+                <div class="queue-card-header">
+                    <div class="queue-card-status">
+                        ${statusIcon}
+                        <span class="status-text">${statusText}</span>
+                    </div>
+                </div>
+                <div class="queue-card-body">
+                    <div class="file-name-display">
+                        <svg class="file-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                        </svg>
+                        <span class="file-name">${item.fileName}</span>
+                    </div>
+                    ${documentIdSection}
+                    <div class="upload-time">${item.timestamp}</div>
+                </div>
+            `;
+        }
+        // Upload file function
+        async function uploadFile(file) {
+            const queueId = addToQueue(file);
+            const formData = new FormData();
+            formData.append("file", file);
+            // Reset file input to allow uploading the same file again
+            fileInput.value = "";
+            try {
+                const res = await fetch(FASTAPI_PROCESS_URL, {
+                    method: "POST",
+                    headers: {
+                        'Authorization': 'Bearer test_token'
+                    },
+                    body: formData
+                });
+                if (!res.ok) {
+                    const errorData = await res.json();
+                    throw new Error(errorData.detail || "Upload failed");
+                }
+                const data = await res.json();
+                updateQueueItem(queueId, 'success', data);
+                removeFromQueue(queueId);
+            } catch (err) {
+                console.error("Upload error:", err);
+                updateQueueItem(queueId, 'error', { error: err.message });
+                removeFromQueue(queueId);
+            }
+        }
+        // Browse button click
+        browseBtn.addEventListener("click", (e) => {
+            e.stopPropagation(); // Prevent event from bubbling to dropZone
+            fileInput.click();
+        });
+        // File input change - handle multiple files
+        fileInput.addEventListener("change", (e) => {
+            const files = Array.from(e.target.files);
+            files.forEach(file => {
+                uploadFile(file);
+            });
+        });
+        // Drag and drop events
+        dropZone.addEventListener("dragover", (e) => {
+            e.preventDefault();
+            if (!dropZone.classList.contains('disabled')) {
+                dropZone.classList.add("drag-over");
+            }
+        });
+        dropZone.addEventListener("dragleave", () => {
+            dropZone.classList.remove("drag-over");
+        });
+        dropZone.addEventListener("drop", (e) => {
+            e.preventDefault();
+            dropZone.classList.remove("drag-over");
+            const files = Array.from(e.dataTransfer.files);
+            files.forEach(file => {
+                const isImage = file.type.startsWith("image/");
+                const isPDF = file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
+                if (isImage || isPDF) {
+                    uploadFile(file);
+                } else {
+                    alert(`"${file.name}" is not a supported file type. Please upload images or PDF files.`);
+                }
+            });
+        });
+        // Click on drop zone to browse
+        dropZone.addEventListener("click", (e) => {
+            // Don't trigger if clicking the browse button (it has its own handler)
+            if (e.target !== browseBtn) {
+                fileInput.click();
+            }
+        });
+    </script>
+</body>
+
+</html>

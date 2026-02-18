@@ -1,0 +1,36 @@
+
+--- UNIQUE PROJECT IDS FOUND ---
+ - gwksducnmmxzwfzqcjwt
+ - uqmsawccsamyugcbaspv
+
+--- SAMPLE URLS FOUND ---
+Path: users/698ae9c9eb2255176fd7adba/companies/698ae9dfeb2255176fd7adbe/documents/INV1/image_url
+URL:  https://gwksducnmmxzwfzqcjwt.supabase.co/storage/v1/object/public/image/Receipt_20260213024535497510.jpeg
+
+Path: users/698ae9c9eb2255176fd7adba/companies/698ae9dfeb2255176fd7adbe/documents/STM1/image_url
+URL:  https://gwksducnmmxzwfzqcjwt.supabase.co/storage/v1/object/public/image/Document_20260213023842319154.pdf
+
+Path: users/698c4508aacdfcf64491c3f3/companies/698c4526aacdfcf64491c3f8/documents/INV1/image_url
+URL:  https://gwksducnmmxzwfzqcjwt.supabase.co/storage/v1/object/public/image/Document_20260213035852504936.pdf
+
+Path: users/test-user-123/companies/test-company-123/documents/INV1/image_url
+URL:  https://uqmsawccsamyugcbaspv.supabase.co/test
+
+Path: users/test-user-123/companies/test-company-123/documents/INV4/image_url
+URL:  https://gwksducnmmxzwfzqcjwt.supabase.co/storage/v1/object/public/image/Receipt_20260211160342222484.jpg
+
+Path: users/test-user-123/companies/test-company-123/documents/INV5/image_url
+URL:  https://gwksducnmmxzwfzqcjwt.supabase.co/storage/v1/object/public/image/Receipt_20260211160437720879.jpg
+
+Path: users/test-user-123/companies/test-company-123/documents/INV8/image_url
+URL:  https://gwksducnmmxzwfzqcjwt.supabase.co/storage/v1/object/public/image/Receipt_20260211162938643464.png
+
+Path: users/test-user-123/companies/test-company-123/documents/RCT1/image_url
+URL:  https://gwksducnmmxzwfzqcjwt.supabase.co/storage/v1/object/public/image/Receipt_20260211160311694141.jpg
+
+Path: users/test-user-123/companies/test-company-123/documents/RCT5/image_url
+URL:  https://gwksducnmmxzwfzqcjwt.supabase.co/storage/v1/object/public/image/Receipt_20260212032216985390.png
+
+Path: users/test-user-123/companies/test-company-123/documents/RCT6/image_url
+URL:  https://gwksducnmmxzwfzqcjwt.supabase.co/storage/v1/object/public/image/Receipt_20260213043033925834.png
+

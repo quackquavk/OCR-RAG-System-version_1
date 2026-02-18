@@ -1,0 +1,47 @@
+fastapi
+uvicorn[standard]
+pillow
+pytesseract
+pdf2image
+pillow-heif
+opencv-python-headless
+requests
+firebase-admin
+python-dotenv
+asyncpg
+psycopg2-binary
+
+python-multipart
+langchain-google-genai
+langchain-groq
+langchain-core
+langchain-huggingface
+langchain-community
+
+pandas
+numpy
+apscheduler
+
+# CPU-only versions to avoid CUDA dependencies
+# Note: torch and torchvision are installed separately in Dockerfile
+# to avoid pip hash mismatch errors with --index-url
+easyocr
+sentence-transformers
+# faiss-cpu
+tiktoken
+
+
+gspread
+google-auth
+google-auth-oauthlib
+google-api-python-client
+cryptography
+openpyxl
+
+# Authentication dependencies
+PyJWT
+
+supabase
+httpx
+
+

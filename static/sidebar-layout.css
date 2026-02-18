@@ -1,0 +1,169 @@
+/* Sidebar Layout & Sizing Fixes */
+
+/* Enforce Two-Column Layout */
+.main-layout {
+    display: flex !important;
+    flex-direction: row !important;
+    gap: 24px;
+    align-items: flex-start;
+    width: 100%;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.upload-column {
+    flex: 1;
+    min-width: 0;
+    /* Critical for flexbox text overflow */
+}
+
+.queue-column {
+    width: 350px !important;
+    flex-shrink: 0;
+    min-width: 350px;
+}
+
+/* Processing Section Container */
+.processing-section {
+    background: linear-gradient(135deg, #ffffff 0%, #f3f4f6 100%);
+    border-radius: 16px;
+    padding: 20px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+    border: 1px solid rgba(229, 231, 235, 0.5);
+    display: block !important;
+    /* Ensure it doesn't get hidden by accident, JS toggles this though */
+    width: 100%;
+    box-sizing: border-box;
+}
+
+/* STRICT ICON SIZING - Fixes the giant icon issue */
+svg {
+    max-width: 100%;
+    height: auto;
+}
+
+.processing-title-icon {
+    width: 24px !important;
+    height: 24px !important;
+    min-width: 24px;
+    color: #4b5563;
+}
+
+.queue-spinner-small {
+    width: 16px !important;
+    height: 16px !important;
+    min-width: 16px;
+    border: 2px solid #e5e7eb;
+    border-top: 2px solid #3b82f6;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+.status-icon-small {
+    width: 18px !important;
+    height: 18px !important;
+    min-width: 18px;
+}
+
+.file-icon {
+    width: 20px !important;
+    height: 20px !important;
+    min-width: 20px;
+    color: #6b7280;
+}
+
+/* Card Styling */
+.queue-item-card {
+    background: white;
+    border-radius: 12px;
+    padding: 16px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+    border: 1px solid #f3f4f6;
+    margin-bottom: 12px;
+    transition: transform 0.2s;
+}
+
+.queue-item-card:hover {
+    transform: translateY(-2px);
+}
+
+.queue-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.queue-card-status {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.status-text {
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+/* Typography */
+.file-name-display {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: #f9fafb;
+    padding: 8px;
+    border-radius: 6px;
+    margin-bottom: 8px;
+}
+
+.file-name {
+    font-size: 13px;
+    font-weight: 500;
+    color: #374151;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.document-id-section {
+    background: #f0fdf4;
+    border: 1px dashed #86efac;
+    border-radius: 6px;
+    padding: 8px 12px;
+    margin-top: 8px;
+}
+
+.doc-id-label {
+    font-size: 10px;
+    color: #15803d;
+    font-weight: 600;
+    text-transform: uppercase;
+    display: block;
+}
+
+.doc-id-value {
+    font-size: 12px;
+    color: #166534;
+    font-family: monospace;
+    font-weight: 700;
+}
+
+.upload-time {
+    font-size: 11px;
+    color: #9ca3af;
+    text-align: right;
+    margin-top: 8px;
+}
+
+/* Responsive */
+@media (max-width: 1024px) {
+    .main-layout {
+        flex-direction: column !important;
+    }
+
+    .queue-column {
+        width: 100% !important;
+        min-width: 0;
+    }
+}

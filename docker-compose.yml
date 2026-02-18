@@ -1,0 +1,30 @@
+services:
+  ocr-rag-system:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ocr-rag-system
+    ports:
+      - "8000:8000"
+    volumes:
+      # Mount application code for hot-reloading during development
+      - ./app:/app/app
+      # Mount main.py for hot-reloading
+      - ./main.py:/app/main.py
+      # Mount config files (service account keys)
+      - ./app/config/firebase-key.json:/app/app/config/firebase-key.json:ro
+      - ./app/config/google_service_account.json:/app/app/config/google_service_account.json:ro
+      # Mount counters.json for persistence
+      - ./counters.json:/app/counters.json
+    environment:
+      # Add your environment variables here or use env_file
+      - PYTHONUNBUFFERED=1
+    env_file:
+      - .env
+    restart: unless-stopped
+    healthcheck:
+      test: [ "CMD", "python", "-c", "import requests; requests.get('http://localhost:8000/', timeout=5)" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s

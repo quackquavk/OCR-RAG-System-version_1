@@ -1,0 +1,61 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+
+# Virtual environments
+myenv/
+venv/
+env/
+ENV/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Git
+.git/
+.gitignore
+
+# Environment files (should be mounted or passed at runtime)
+.env
+
+# Agent files
+.agent/
+
+# Data directories (should be mounted as volumes)
+data/
+media/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+*.git
+.env
+data/
+static/
+media/
+
+DOCKER_PUSH_GUIDE.md
+DOCKER_README.md
+DOCKER_RUN_GUIDE.md
+FRONTEND_API_GUIDE.md
+FRONTEND_DEV_SETUP.md
+OAUTH_CONSENT_SCREEN_GUIDE.md
+OAUTH_SETUP.md
+QUICKSTART.md

@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sheet - Testing Mode</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="sidebar-layout.css">
+    <script src="groq-gate.js"></script>
+    <style>
+        .search-panel {
+            margin-top: 20px;
+            padding: 20px;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+        }
+
+        .search-row {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        .filter-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .filter-group label {
+            font-weight: 600;
+            color: #555;
+            font-size: 14px;
+        }
+
+        .filter-group input[type="date"],
+        .filter-group select {
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+            min-width: 150px;
+        }
+
+        .filter-group input[type="date"]:focus,
+        .filter-group select:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+
+        .search-btn,
+        .clear-btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 15px;
+            transition: 0.25s;
+            font-weight: 600;
+        }
+
+        .search-btn {
+            background: #3b82f6;
+            color: white;
+        }
+
+        .search-btn:hover {
+            background: #2563eb;
+        }
+
+        .clear-btn {
+            background: #6b7280;
+            color: white;
+        }
+
+        .clear-btn:hover {
+            background: #4b5563;
+        }
+
+        .sheet-box {
+            margin-top: 20px;
+            padding: 20px;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+            font-size: 16px;
+            color: #333;
+            min-height: 150px;
+        }
+
+        .doc-card {
+            border: 1px solid #ddd;
+            padding: 10px;
+            border-radius: 8px;
+            width: 200px;
+        }
+
+        .doc-card img {
+            width: 100%;
+            border-radius: 6px;
+            margin-bottom: 6px;
+            cursor: pointer;
+        }
+
+        .doc-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+
+        .doc-type-badge {
+            font-size: 11px;
+            background: #3b82f6;
+            color: white;
+            padding: 3px 8px;
+            border-radius: 4px;
+            display: inline-block;
+            margin-top: 5px;
+            text-transform: capitalize;
+        }
+
+        .download-btn {
+            padding: 6px 12px;
+            background: #10b981;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            margin-top: 8px;
+            width: 100%;
+        }
+
+        .download-btn:hover {
+            background: #059669;
+        }
+
+        .delete-btn {
+            padding: 6px 12px;
+            background: #ef4444;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            margin-top: 8px;
+            width: 100%;
+        }
+
+        .delete-btn:hover {
+            background: #dc2626;
+        }
+
+        /* Ensure doc-card has enough height for buttons */
+        .doc-card {
+            min-height: 350px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="sidebar">
+        <h1>🧪 Test Dashboard</h1>
+        <p style="color: #666; font-size: 12px; padding: 0 20px;">Testing Mode - No Auth Required</p>
+        <a href="dashboard.html">Dashboard</a>
+        <a href="upload_docs.html">Upload</a>
+        <a href="sheets.html" class="active">Sheet</a>
+    </div>
+
+    <div class="content">
+        <div class="title">Sheet</div>
+
+        <!-- Search Panel -->
+        <div class="search-panel">
+            <div class="search-row">
+                <!-- Date Range -->
+                <div class="filter-group">
+                    <label>From:</label>
+                    <input type="date" id="startDate" placeholder="Start Date">
+                </div>
+
+                <div class="filter-group">
+                    <label>To:</label>
+                    <input type="date" id="endDate" placeholder="End Date">
+                </div>
+
+                <!-- Document Type Dropdown -->
+                <div class="filter-group">
+                    <label>Type:</label>
+                    <select id="docTypeFilter">
+                        <option value="all">All Types</option>
+                        <option value="receipt">Receipt</option>
+                        <option value="invoice">Invoice</option>
+                        <option value="bank_statement">Bank Statement</option>
+                        <option value="others">Others</option>
+                    </select>
+                </div>
+
+                <!-- Search Button -->
+                <button onclick="searchDocuments()" class="search-btn">Search</button>
+                <button onclick="clearFilters()" class="clear-btn">Clear</button>
+            </div>
+        </div>
+
+        <div id="sheetBox" class="sheet-box">
+            Use the filters above to search for documents.
+        </div>
+    </div>
+
+    <!-- Document Preview Modal -->
+    <div id="docModal" class="modal">
+        <div class="modal-content">
+            <span class="close-modal">&times;</span>
+            <div id="modalBody"
+                style="width: 100%; height: 100%; display: flex; justify-content: center; align-items: center;"></div>
+        </div>
+    </div>
+
+    <script>
+        let currentUser = null;
+        let currentPage = 1;
+        let isLoading = false;
+        let hasMore = true;
+        const limit = 10;
+        // Modal Logic
+        const modal = document.getElementById("docModal");
+        const modalBody = document.getElementById("modalBody");
+        const closeBtn = document.querySelector(".close-modal");
+
+        function getImageUrl(doc) {
+            let path = doc.image_url;
+
+            // Fallback to image_path if image_url is missing or invalid
+            if (!path || path === 'None' || path === '') {
+                path = doc.image_path;
+            }
+
+            if (!path) return '';
+
+            // If it's a full Supabase/Cloud URL (starts with http), use it directly
+            if (path.startsWith('http')) {
+                return path;
+            }
+
+            // For local paths, use the preview proxy to ensure proper handling (converts HEIC, etc.)
+            // Extract filename from path (handles both / and \ separator)
+            const filename = path.split(/[\\/]/).pop();
+            return `http://127.0.0.1:8000/api/v1/preview/${filename}`;
+        }
+
+        function openModal(url, type) {
+            modal.style.display = "flex";
+            if (type === 'pdf') {
+                modalBody.innerHTML = `<iframe src="${url}" style="width:100%; height:100%;"></iframe>`;
+            } else {
+                modalBody.innerHTML = `<img src="${url}">`;
+            }
+        }
+
+        if (closeBtn) {
+            closeBtn.onclick = function () {
+                modal.style.display = "none";
+                modalBody.innerHTML = '';
+            }
+        }
+
+        window.onclick = function (event) {
+            if (event.target == modal) {
+                modal.style.display = "none";
+                modalBody.innerHTML = '';
+            }
+        }
+
+        // Search documents with filters
+        async function searchDocuments(isLoadMore = false) {
+            if (isLoading || (isLoadMore && !hasMore)) return;
+
+            const box = document.getElementById("sheetBox");
+
+            if (!isLoadMore) {
+                box.innerHTML = `<p>Searching documents...</p>`;
+                currentPage = 1;
+                hasMore = true;
+            }
+
+            isLoading = true;
+
+            // Collect filter values
+            const startDate = document.getElementById("startDate").value;
+            const endDate = document.getElementById("endDate").value;
+            const docType = document.getElementById("docTypeFilter").value;
+
+            // Build query parameters
+            const params = new URLSearchParams();
+            if (startDate) params.append("start_date", startDate);
+            if (endDate) params.append("end_date", endDate);
+            if (docType && docType !== "all") params.append("doc_type", docType);
+            params.append("page", currentPage);
+            params.append("limit", limit);
+
+            const apiUrl = `http://127.0.0.1:8000/api/v1/search-documents?${params.toString()}`;
+
+            try {
+                const res = await fetch(apiUrl, {
+                    headers: {
+                        'Authorization': 'Bearer test_token'
+                    }
+                });
+                if (!res.ok) throw new Error("Failed to search documents");
+
+                const result = await res.json();
+
+                hasMore = result.has_more;
+                displayDocuments(result.documents, isLoadMore, result.total_count);
+
+                if (hasMore) currentPage++;
+
+            } catch (err) {
+                console.error(err);
+                if (!isLoadMore) {
+                    box.innerHTML = `<p style="color:red;">Failed to search documents. ${err.message}</p>`;
+                } else {
+                    console.error("Failed to load more documents:", err);
+                }
+            } finally {
+                isLoading = false;
+            }
+        }
+
+        // Clear all filters and reload
+        function clearFilters() {
+            document.getElementById("startDate").value = "";
+            document.getElementById("endDate").value = "";
+            document.getElementById("docTypeFilter").value = "all";
+
+            // Reload all documents
+            searchDocuments();
+        }
+
+        // Display documents in grid
+        function displayDocuments(documents, isLoadMore, totalCount) {
+            console.log("Rendering documents. Count:", documents ? documents.length : 0);
+            const box = document.getElementById("sheetBox");
+
+            if (!isLoadMore && (!documents || documents.length === 0)) {
+                box.innerHTML = `<p>No documents found matching your criteria.</p>`;
+                return;
+            }
+
+            let grid;
+            if (!isLoadMore) {
+                box.innerHTML = `<p style="margin-bottom: 15px;"><strong>${totalCount}</strong> document(s) found</p><div class="doc-grid" id="docGrid"></div>`;
+                grid = document.getElementById("docGrid");
+            } else {
+                grid = document.getElementById("docGrid");
+            }
+
+            let html = '';
+            if (documents && Array.isArray(documents)) {
+                documents.forEach(doc => {
+                    const isPdf = doc.image_url && doc.image_url.toLowerCase().endsWith('.pdf');
+                    const type = isPdf ? 'pdf' : 'image';
+                    const displayUrl = getImageUrl(doc);
+                    const filename = (doc.image_url || doc.image_path || "").split(/[\\/]/).pop();
+
+                    console.log(`Processing doc: ${doc.doc_id}, filename: ${filename}`);
+
+                    html += `
+          <div class="doc-card" data-doc-id="${doc.doc_id}">
+            <p><b>ID:</b> ${doc.doc_id}</p>
+            <div style="cursor:pointer;" onclick="openModal('${displayUrl}', '${type}')">
+                <img src="${displayUrl}" alt="${doc.doc_id}" title="Click to preview">
+            </div>
+            <p style="font-size:12px; color:#555;">Created: ${formatDate(doc.created_at)}</p>
+            ${doc.document_type ? `<span class="doc-type-badge">${doc.document_type}</span>` : ''}
+            <div style="display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap;">
+              <button class="download-btn" onclick="downloadCSV('${doc.doc_id}')" style="flex: 1;">CSV</button>
+              <button class="download-btn" onclick="downloadExcel('${doc.doc_id}')" style="flex: 1; background: #28a745;">Excel</button>
+              <button class="delete-btn" onclick="deleteDocument('${doc.doc_id}', '${filename}')" style="flex: 1 1 100%; height: 35px; background: #ef4444 !important; color: white !important; display: block !important; visibility: visible !important;">DELETE</button>
+            </div>
+          </div>
+        `;
+                });
+                grid.insertAdjacentHTML('beforeend', html);
+            }
+        }
+
+        // Format date for display
+        function formatDate(dateStr) {
+            if (!dateStr) return 'N/A';
+            try {
+                const date = new Date(dateStr);
+                // Check if date is valid
+                if (isNaN(date.getTime())) {
+                    console.warn('Invalid date:', dateStr);
+                    return dateStr;
+                }
+                // Format as readable date and time
+                return date.toLocaleString('en-US', {
+                    year: 'numeric',
+                    month: 'short',
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    hour12: true
+                });
+            } catch (e) {
+                console.error('Error formatting date:', dateStr, e);
+                return dateStr;
+            }
+        }
+
+
+        async function downloadCSV(doc_id) {
+            try {
+                console.log('📊 Doc ID:', doc_id);
+
+                const url = `http://127.0.0.1:8000/api/v1/generate-csv/${doc_id}`;
+                console.log('📊 Fetching:', url);
+
+                const res = await fetch(url, {
+                    headers: {
+                        'Authorization': 'Bearer test_token'
+                    }
+                });
+
+                if (!res.ok) {
+                    const errorText = await res.text();
+                    console.error('📊 Error response:', errorText);
+                    throw new Error(`Failed to download CSV: ${res.status} ${res.statusText}`);
+                }
+
+                // Detect if response is JSON with "csv" key
+                const contentType = res.headers.get("content-type") || "";
+                let blob;
+                if (contentType.includes("application/json")) {
+                    const data = await res.json();
+                    console.log('📊 CSV data received, length:', data.csv?.length);
+                    blob = new Blob([data.csv], { type: "text/csv" });
+                } else {
+                    blob = await res.blob();
+                }
+
+                const blobUrl = URL.createObjectURL(blob);
+                const link = document.createElement("a");
+                link.href = blobUrl;
+                link.download = `${doc_id}.csv`;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                URL.revokeObjectURL(blobUrl);
+
+                console.log('📊 CSV download complete');
+
+            } catch (err) {
+                console.error("📊 Failed to download CSV:", err);
+                alert("Failed to download CSV. Check console for details.");
+            }
+        }
+
+        // Download Excel function
+        async function downloadExcel(doc_id) {
+            try {
+                console.log('📊 Downloading Excel for doc_id:', doc_id);
+
+                const res = await fetch(`/api/v1/generate-excel/${doc_id}`, {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': 'Bearer test_token'
+                    }
+                });
+
+                if (!res.ok) {
+                    const errorText = await res.text();
+                    console.error('📊 Error response:', errorText);
+                    throw new Error(`Failed to download Excel: ${res.status} ${res.statusText}`);
+                }
+
+                // Get the blob directly
+                const blob = await res.blob();
+
+                // Extract filename from Content-Disposition header if available
+                const contentDisposition = res.headers.get('Content-Disposition');
+                let filename = `${doc_id}.xlsx`;
+                if (contentDisposition) {
+                    const filenameMatch = contentDisposition.match(/filename="?(.+)"?/);
+                    if (filenameMatch) {
+                        filename = filenameMatch[1];
+                    }
+                }
+
+                const blobUrl = URL.createObjectURL(blob);
+                const link = document.createElement("a");
+                link.href = blobUrl;
+                link.download = filename;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                URL.revokeObjectURL(blobUrl);
+
+                console.log('📊 Excel download complete');
+
+            } catch (err) {
+                console.error("📊 Failed to download Excel:", err);
+                alert("Failed to download Excel. Check console for details.");
+            }
+        }
+
+        async function deleteDocument(doc_id, fullPath) {
+            if (!confirm(`Are you sure you want to delete document ${doc_id}?`)) return;
+
+            try {
+                // Extract filename from path
+                const filename = fullPath.split(/[\\/]/).pop();
+
+                const url = `http://127.0.0.1:8000/api/v1/delete-image/${filename}?doc_id=${doc_id}`;
+
+                const res = await fetch(url, {
+                    method: 'DELETE',
+                    headers: {
+                        'Authorization': 'Bearer test_token'
+                    }
+                });
+
+                if (!res.ok) {
+                    const error = await res.json();
+                    throw new Error(error.detail || "Failed to delete document");
+                }
+
+                searchDocuments(); // Refresh the grid immediately
+                alert("Document deleted successfully");
+            } catch (err) {
+                console.error("Failed to delete document:", err);
+                alert(`Error: ${err.message}`);
+            }
+        }
+
+        // Load all documents on page load
+        window.addEventListener('DOMContentLoaded', () => {
+            searchDocuments();
+        });
+
+        // Infinite scroll logic
+        const contentArea = document.querySelector('.content');
+        if (contentArea) {
+            contentArea.onscroll = function () {
+                if (contentArea.scrollTop + contentArea.clientHeight >= contentArea.scrollHeight - 500) {
+                    if (hasMore && !isLoading) {
+                        searchDocuments(true);
+                    }
+                }
+            };
+        }
+    </script>
+</body>
+
+</html>
