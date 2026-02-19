@@ -7,6 +7,9 @@ from pathlib import Path
 from PIL import Image
 import io
 
+import pillow_heif
+pillow_heif.register_heif_opener()
+
 from app.use_cases.processing.upload_orchestrator import UploadOrchestrator
 from app.presentation.auth_middleware import get_current_user
 from app.presentation.schemas.parsed_data_model import ProcessDocumentResponse
@@ -17,6 +20,57 @@ router = APIRouter(prefix="/api/v1", tags=["Uploads"])
 
 upload_orchestrator = UploadOrchestrator()
 
+HEIC_EXTENSIONS = {".heic", ".heif"}
+ALLOWED_IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".bmp", ".tiff", ".webp", ".heic", ".heif", ".pdf"}
+
+
+def _validate_file_extension(filename: str) -> str:
+    """
+    Validates that the file has a supported extension.
+    Returns the lowercased extension.
+    Raises ValueError if unsupported.
+    """
+    ext = os.path.splitext(filename or "")[-1].lower()
+    if not ext or ext not in ALLOWED_IMAGE_EXTENSIONS:
+        raise ValueError(
+            f"Unsupported file type: '{ext or 'none'}'. "
+            f"Allowed types: {', '.join(sorted(ALLOWED_IMAGE_EXTENSIONS))}"
+        )
+    return ext
+
+
+async def _convert_heic_to_jpeg(file: UploadFile) -> UploadFile:
+    """
+    If the uploaded file is HEIC/HEIF, convert it to JPEG in-memory
+    and return a new UploadFile. Otherwise return the original file unchanged.
+    """
+    ext = os.path.splitext(file.filename or "")[-1].lower()
+    if ext not in HEIC_EXTENSIONS:
+        return file
+
+    logger.info(f"Converting HEIC/HEIF file to JPEG: {file.filename}")
+    content = await file.read()
+
+    img = Image.open(io.BytesIO(content))
+    img = img.convert("RGB")
+
+    jpeg_buffer = io.BytesIO()
+    img.save(jpeg_buffer, format="JPEG", quality=95)
+    jpeg_buffer.seek(0)
+
+    # Build a new filename with .jpg extension
+    new_filename = os.path.splitext(file.filename)[0] + ".jpg"
+
+    # Create a new UploadFile wrapping the JPEG bytes
+    new_file = UploadFile(
+        filename=new_filename,
+        file=jpeg_buffer,
+        headers=file.headers,
+    )
+    new_file.content_type = "image/jpeg"
+    return new_file
+
+
 @router.post("/process-image")
 async def process_image(
     file: UploadFile,
@@ -25,8 +79,14 @@ async def process_image(
 ):
     """
     Process uploaded image with user-specific data isolation.
+    Supports HEIC/HEIF images (auto-converted to JPEG).
     """
     try:
+        # Validate file type before any processing
+        _validate_file_extension(file.filename)
+
+        file = await _convert_heic_to_jpeg(file)
+
         return await upload_orchestrator.handle_upload(
             file=file,
             background_tasks=background_tasks,
@@ -47,7 +107,7 @@ async def process_document(file: UploadFile):
     """
     Standalone document processing API.
     Extracts text and parses data (total amount, vendor, date, etc.) without persistence.
-    Supports Images and PDFs.
+    Supports Images (including HEIC/HEIF), and PDFs.
     """
     logger.info(f"Anonymous process-document request for file: {file.filename}")
     
@@ -57,10 +117,22 @@ async def process_document(file: UploadFile):
         if not content:
             raise HTTPException(status_code=400, detail="Empty file uploaded")
 
-        # 2. Process via Use Case
+        # 2. Convert HEIC/HEIF to JPEG bytes if necessary
+        filename = file.filename or ""
+        ext = os.path.splitext(filename)[-1].lower()
+        if ext in HEIC_EXTENSIONS:
+            logger.info(f"Converting HEIC/HEIF content to JPEG for: {filename}")
+            img = Image.open(io.BytesIO(content))
+            img = img.convert("RGB")
+            jpeg_buffer = io.BytesIO()
+            img.save(jpeg_buffer, format="JPEG", quality=95)
+            content = jpeg_buffer.getvalue()
+            filename = os.path.splitext(filename)[0] + ".jpg"
+
+        # 3. Process via Use Case
         data = await upload_orchestrator.anonymous_processor.process_document(
             content=content, 
-            filename=file.filename
+            filename=filename
         )
 
         return ProcessDocumentResponse(
